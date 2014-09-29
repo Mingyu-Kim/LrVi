@@ -22,6 +22,24 @@ Radio Parsing Defines
 
 /*****************************************************
 MPU Parsing Defines
+Class documentation
+http://www.i2cdevlib.com/docs/html/class_m_p_u6050.html
+
+Gyro Readings
+FS_SEL | Full Scale Range   | LSB Sensitivity
+-------+--------------------+----------------
+0      | +/- 250 degrees/s  | 131 LSB/deg/s		(DEFAULT)
+1      | +/- 500 degrees/s  | 65.5 LSB/deg/s
+2      | +/- 1000 degrees/s | 32.8 LSB/deg/s
+3      | +/- 2000 degrees/s | 16.4 LSB/deg/s
+
+AFS_SEL | Full Scale Range | LSB Sensitivity
+--------+------------------+----------------
+0       | +/- 2g           | 8192 LSB/mg 		(DEFAULT)
+1       | +/- 4g           | 4096 LSB/mg
+2       | +/- 8g           | 2048 LSB/mg
+3       | +/- 16g          | 1024 LSB/mg
+
 *****************************************************/
 #include "I2Cdev.h"
 #include "MPU6050.h"
@@ -139,9 +157,9 @@ void MPU_Getdata()
     
     unsigned long t_now = millis();
     
-    float acc_x = float(ax)/16384;
-    float acc_y = float(ay)/16384;
-    float acc_z = float(az)/16384;
+    float acc_x = float(ax)/8192;
+    float acc_y = float(ay)/8192;
+    float acc_z = float(az)/8192;
         
     float gyro_x = (float(gx) - base_gx)/131;
     float gyro_y = (float(gy) - base_gy)/131;
