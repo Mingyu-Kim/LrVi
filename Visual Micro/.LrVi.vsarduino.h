@@ -5,14 +5,14 @@
 	        all non-arduino files created by visual micro and all visual studio project or solution files can be freely deleted and are not required to compile a sketch (do not delete your own code!).
 	        note: debugger breakpoints are stored in '.sln' or '.asln' files, knowledge of last uploaded breakpoints is stored in the upload.vmps.xml file. Both files are required to continue a previous debug session without needing to compile and upload again
 	
-	Hardware: Arduino Uno, Platform=avr, Package=arduino
+	Hardware: Arduino Pro or Pro Mini (5V, 16 MHz) w/ ATmega328, Platform=avr, Package=arduino
 */
 
 #ifndef _VSARDUINO_H_
 #define _VSARDUINO_H_
 #define __AVR_ATmega328p__
 #define __AVR_ATmega328P__
-#define ARDUINO 106
+#define ARDUINO 105
 #define ARDUINO_MAIN
 #define __AVR__
 #define __avr__
@@ -41,14 +41,12 @@ extern "C" void __cxa_pure_virtual() {;}
 
 //
 //
+void bae_write();
 void serial_mpu();
 void serial_deg();
+void serial_deg(int delay);
 void calib();
-void set_last_read(unsigned long time, float x, float y, float z);
-inline unsigned long get_last_time();
-inline float get_last_x();
-inline float get_last_y();
-inline float get_last_z();
+void kalman_init();
 void MPU_Getdata();
 void MPU_Init();
 void parse();
@@ -56,7 +54,10 @@ void serial_radio();
 void radio_init();
 void read_ppm();
 
-#include "C:\Program Files (x86)\Arduino\hardware\arduino\cores\arduino\arduino.h"
-#include "C:\Program Files (x86)\Arduino\hardware\arduino\variants\standard\pins_arduino.h" 
-#include "C:\Users\Mingyu\Documents\Arduino\LrVi\LrVi.ino"
+#include "C:\Program Files\Arduino\hardware\arduino\cores\arduino\arduino.h"
+#include "C:\Program Files\Arduino\hardware\arduino\variants\standard\pins_arduino.h" 
+#include "C:\Users\user\Documents\Arduino\LrVi\LrVi.ino"
+#include "C:\Users\user\Documents\Arduino\LrVi\Kalman.h"
+#include "C:\Users\user\Documents\Arduino\LrVi\Servo.cpp"
+#include "C:\Users\user\Documents\Arduino\LrVi\Servo.h"
 #endif

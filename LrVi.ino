@@ -2,6 +2,7 @@
 Arduino Pin Defines
 *****************************************************/
 #define Receiver_Pin 2      //Defines where the radio PPM SUM is connected to
+#define Servo_Pin 5      //Defines where the servo is connected to
 
 /*****************************************************
 Radio Parsing Defines
@@ -43,7 +44,8 @@ AFS_SEL | Full Scale Range | LSB Sensitivity
 *****************************************************/
 #include "I2Cdev.h"
 #include "MPU6050.h"
-#include <math.h>
+#include "Servo.h"
+#include "Kalman.h" // Source: https://github.com/TKJElectronics/KalmanFilter
 #if I2CDEV_IMPLEMENTATION == I2CDEV_ARDUINO_WIRE
     #include "Wire.h"
 #endif
@@ -57,18 +59,25 @@ int parsed_radio[6];  //array for storing parsed radio data
 int16_t ax, ay, az;
 int16_t gx, gy, gz;
 
-float acc_x, acc_y, acc_z;
-float gyro_x, gyro_y, gyro_z;
-float base_ax, base_ay, base_az, base_gx, base_gy, base_gz;
-float acc_angle_x, acc_angle_y, acc_angle_z;
-float gyro_angle_x, gyro_angle_y, gyro_angle_z;
-unsigned long last_read_time;
-float last_x, last_y, last_z;
-float dt, t_now;
+float base_ax, base_ay, base_gx, base_gy, base_gz;
+
+long serial_deg_delay;
+long kalman_timer;
+
+double kalAngleX, kalAngleY; // Calculated angle using a Kalman filter
+double roll, pitch;
+
+unsigned int rate_counter = 0;
+
+int roll_P = 2;
+
 /*****************************************************
 Classes
 *****************************************************/
 MPU6050 accelgyro;
+Kalman kalmanX; // Create the Kalman instances
+Kalman kalmanY;
+Servo bae;
 
 void setup()
 {
@@ -76,35 +85,57 @@ void setup()
   Serial.println("ready");     //I am ready!
   radio_init();                 //Initializes radio input codes
   MPU_Init();
+  kalman_init();
+  bae.attach(Servo_Pin);
 }
 
 void loop()
 {
   MPU_Getdata();
   parse();          //Parses raw radio data
-  serial_radio();   //Shows serial data to PC
-  serial_mpu();
-  serial_deg();
-  delay(100);  //wait wait wait
+  bae_write();
+  rate_counter++;
+  //serial_radio();   //Shows serial data to PC
+  //serial_mpu();
+  serial_deg(50);
+  // delay(100);  //wait wait wait
 }
 
-void serial_mpu()
+void bae_write()
+{
+	bae.write(90 - roll_P * kalAngleX);
+}
+
+void serial_mpu() //Writes raw sensor values to serial
 {
     Serial.print("a/g:\t");
-    Serial.print(ax); Serial.print("\t");
-    Serial.print(ay); Serial.print("\t");
-    Serial.print(az); Serial.print("\t");
-    Serial.print(gx); Serial.print("\t");
-    Serial.print(gy); Serial.print("\t");
-    Serial.println(gz);
+    Serial.print((float)ax / 16384); Serial.print("\t");
+	Serial.print((float)ay / 16384); Serial.print("\t");
+	Serial.print((float)az / 16384); Serial.print("\t");
+	Serial.print((float)gx / 131); Serial.print("\t");
+	Serial.print((float)gy / 131); Serial.print("\t");
+	Serial.println((float)gz / 131);
 }
 
 void serial_deg()
 {
-    Serial.print("x y z:\t");
-    Serial.print(last_x*180.0/3.1416); Serial.print("\t");
-    Serial.print(last_y*180.0/3.1416); Serial.print("\t");
-    Serial.println(last_z*180.0/3.1416);
+    Serial.print("x y:\t");
+	Serial.print(kalAngleX); Serial.print("\t");
+	Serial.println(kalAngleY);
+}
+
+void serial_deg(int delay)
+{
+	if (millis() - serial_deg_delay > delay)
+	{
+		Serial.print("x y:\t");
+		Serial.print(kalAngleX); Serial.print("\t");
+		Serial.println(kalAngleY);
+		serial_deg_delay = millis();
+		Serial.print("current rate : ");
+		Serial.println(rate_counter);
+		rate_counter = 0;
+	}
 }
 
 
@@ -121,10 +152,9 @@ void calib()
   int16_t Ax, Ay, Az, Gx, Gy, Gz;
   for(int i=0; i<samples;i++)
   {
-    accelgyro.getMotion6(&Ax, &Ay, &Az, &Gx, &Gy, &Gz);
+    accelgyro.getMotion6(&Ay, &Ax, &Az, &Gy, &Gx, &Gz);
     acc_x_calib += float(Ax);
     acc_y_calib += float(Ay);
-    acc_z_calib += float(Az);
     gyro_x_calib += float(Gx);
     gyro_y_calib += float(Gy);
     gyro_z_calib += float(Gz);
@@ -132,30 +162,31 @@ void calib()
   }
   base_ax = acc_x_calib/samples;
   base_ay = acc_y_calib/samples;
-  base_az = acc_z_calib/samples;
   base_gx = gyro_x_calib/samples;
   base_gy = gyro_y_calib/samples;
   base_gz = gyro_z_calib/samples;
 }
 
-void set_last_read(unsigned long time, float x, float y, float z) 
+void kalman_init()
 {
-  last_read_time = time;
-  last_x = x;
-  last_y = y;
-  last_z = z; 
-}
+	accelgyro.getMotion6(&ay, &ax, &az, &gy, &gx, &gz);
 
-inline unsigned long get_last_time() { return last_read_time;}
-inline float get_last_x() { return last_x; }
-inline float get_last_y() { return last_y; }
-inline float get_last_z() { return last_z; }
+	float acc_x = float(ax) / 8192;
+	float acc_y = float(ay) / 8192;
+	float acc_z = float(az) / 8192;
+
+	roll = atan2(acc_y, acc_z) * RAD_TO_DEG;
+	pitch = atan(-acc_x / sqrt(acc_y * acc_y + acc_z * acc_z)) * RAD_TO_DEG;
+
+	kalmanX.setAngle(roll); // Set starting angle
+	kalmanY.setAngle(pitch);
+	kalman_timer = micros();
+
+}
 
 void MPU_Getdata()
 {
-    accelgyro.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
-    
-    unsigned long t_now = millis();
+    accelgyro.getMotion6(&ay, &ax, &az, &gy, &gx, &gz);
     
     float acc_x = float(ax)/8192;
     float acc_y = float(ay)/8192;
@@ -164,20 +195,24 @@ void MPU_Getdata()
     float gyro_x = (float(gx) - base_gx)/131;
     float gyro_y = (float(gy) - base_gy)/131;
     float gyro_z = (float(gz) - base_gz)/131;
-    
-    //filter gyro
-    float dt = (t_now - get_last_time())/1000.0;
-    float gyro_angle_x = gyro_x*dt + get_last_x();
-    float gyro_angle_y = gyro_y*dt + get_last_y();
-    float gyro_angle_z = gyro_z*dt + get_last_z(); 
-    
-    //Complementary
-    float alpha = 0.96;
-    float angle_x = alpha*gyro_angle_x + (1 - alpha)*acc_angle_x;
-    float angle_y = alpha*gyro_angle_y + (1 - alpha)*acc_angle_y;
-    float angle_z = gyro_angle_z;
-    
-    set_last_read(t_now, angle_x, angle_y, angle_z);
+
+	double dt = (double)(micros() - kalman_timer) / 1000000; // Calculate delta time
+	kalman_timer = micros();
+
+	roll = atan2(acc_y, acc_z) * RAD_TO_DEG;
+	pitch = atan(-acc_x / sqrt(acc_y * acc_y + acc_z * acc_z)) * RAD_TO_DEG;
+
+	if ((roll < -90 && kalAngleX > 90) || (roll > 90 && kalAngleX < -90)) {
+		kalmanX.setAngle(roll);
+		kalAngleX = roll;
+	}
+	else
+		kalAngleX = kalmanX.getAngle(roll, gyro_x, dt); // Calculate the angle using a Kalman filter
+
+	if (abs(kalAngleX) > 90)
+		gyro_y = -gyro_y; // Invert rate, so it fits the restriced accelerometer reading
+
+	kalAngleY = kalmanY.getAngle(pitch, gyro_y, dt);
 }
 
 void MPU_Init(){
@@ -196,7 +231,6 @@ void MPU_Init(){
     Serial.println(accelgyro.testConnection() ? "MPU6050 connection successful" : "MPU6050 connection failed");
     
     calib();
-    set_last_read(millis(), 0, 0, 0);
 
     // use the code below to change accel/gyro offset values
     /*
