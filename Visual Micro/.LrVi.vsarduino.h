@@ -41,6 +41,7 @@ extern "C" void __cxa_pure_virtual() {;}
 
 //
 //
+void motor_calc();
 void motor_osc();
 void bae_write();
 void serial_mpu();

@@ -11,8 +11,8 @@ Radio Parsing Defines
 *****************************************************/
 #define Radio_Min 1125      //Minimum duration of raw radio pulse
 #define Radio_Max 1860      //Maximum duration of raw radio pulse
-#define Throt_Min 0         //Minimum value of parsed throttle
-#define Throt_Max 1000      //Maximum value of parsed throttle
+#define Throt_Min 1         //Minimum value of parsed throttle
+#define Throt_Max 15      //Maximum value of parsed throttle
 #define Parse_Min -500      //Minimum value of parsed radio
 #define Parse_Max 500       //Maximum value of parsed radio
 
@@ -23,8 +23,15 @@ Radio Parsing Defines
 #define CH5 4
 #define CH6 5
 
+/*****************************************************
+Other Defines
+*****************************************************/
+
 #define MOT_UP 1
 #define MOT_DOWN 0
+#define Max_Motor_Freq 15
+#define Min_Motor_Freq 1
+
 
 /*****************************************************
 MPU Parsing Defines
@@ -79,6 +86,7 @@ unsigned int rate_counter = 0;
 int roll_P = 2;
 unsigned long osc_period = 100;
 int osc_status;
+int last_throttle;
 
 /*****************************************************
 Classes
@@ -107,23 +115,35 @@ void loop()
   parse();          //Parses raw radio data
   bae_write();
   rate_counter++;
-  //serial_radio();   //Shows serial data to PC
-  //serial_mpu();
   serial_deg(50);
+  motor_calc();
   osc_motor.update();
-  // delay(100);  //wait wait wait
+}
+
+void motor_calc()
+{
+	if (last_throttle = !parsed_radio[CH3])
+	{
+		osc_motor.stop(0);
+		osc_motor.every(1000 / parsed_radio[CH3], motor_osc);
+		last_throttle = parsed_radio[CH3];
+	}
 }
 
 void motor_osc()
 {
 	if (osc_status == MOT_UP)
 	{
+		digitalWrite(Motor_Pin_One, LOW);
+		digitalWrite(Motor_Pin_Two, LOW);
 		digitalWrite(Motor_Pin_One, HIGH);
 		digitalWrite(Motor_Pin_Two, LOW);
 		osc_status = MOT_DOWN;
 	}
 	else if (osc_status == MOT_DOWN)
 	{
+		digitalWrite(Motor_Pin_One, LOW);
+		digitalWrite(Motor_Pin_Two, LOW);
 		digitalWrite(Motor_Pin_One, LOW);
 		digitalWrite(Motor_Pin_Two, HIGH);
 		osc_status = MOT_UP;
@@ -134,7 +154,15 @@ void motor_osc()
 
 void bae_write()
 {
-	bae.write(90 - roll_P * kalAngleX);
+	if (abs(parsed_radio[CH3]) > 50)
+	{
+		bae.write(90 - parsed_radio[CH3] * 0.18);  //0.18 = mapping constant +- 500 ->  +-90
+	}
+	else
+	{
+		bae.write(90 - roll_P * kalAngleX);
+	}
+	
 }
 
 void serial_mpu() //Writes raw sensor values to serial
