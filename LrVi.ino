@@ -3,6 +3,8 @@ Arduino Pin Defines
 *****************************************************/
 #define Receiver_Pin 2      //Defines where the radio PPM SUM is connected to
 #define Servo_Pin 5      //Defines where the servo is connected to
+#define Motor_Pin_One 9      //Defines where the motor is connected to
+#define Motor_Pin_Two 10      //Defines where the motor is connected to
 
 /*****************************************************
 Radio Parsing Defines
@@ -20,6 +22,9 @@ Radio Parsing Defines
 #define CH4 3
 #define CH5 4
 #define CH6 5
+
+#define MOT_UP 1
+#define MOT_DOWN 0
 
 /*****************************************************
 MPU Parsing Defines
@@ -46,6 +51,8 @@ AFS_SEL | Full Scale Range | LSB Sensitivity
 #include "MPU6050.h"
 #include "Servo.h"
 #include "Kalman.h" // Source: https://github.com/TKJElectronics/KalmanFilter
+#include "Timer.h"
+
 #if I2CDEV_IMPLEMENTATION == I2CDEV_ARDUINO_WIRE
     #include "Wire.h"
 #endif
@@ -70,6 +77,8 @@ double roll, pitch;
 unsigned int rate_counter = 0;
 
 int roll_P = 2;
+unsigned long osc_period = 100;
+int osc_status;
 
 /*****************************************************
 Classes
@@ -78,6 +87,8 @@ MPU6050 accelgyro;
 Kalman kalmanX; // Create the Kalman instances
 Kalman kalmanY;
 Servo bae;
+Timer osc_motor;
+
 
 void setup()
 {
@@ -86,7 +97,8 @@ void setup()
   radio_init();                 //Initializes radio input codes
   MPU_Init();
   kalman_init();
-  bae.attach(Servo_Pin);
+  osc_motor.every(osc_period, motor_osc);
+  bae.attach(Servo_Pin, 1000, 2000);
 }
 
 void loop()
@@ -98,7 +110,26 @@ void loop()
   //serial_radio();   //Shows serial data to PC
   //serial_mpu();
   serial_deg(50);
+  osc_motor.update();
   // delay(100);  //wait wait wait
+}
+
+void motor_osc()
+{
+	if (osc_status == MOT_UP)
+	{
+		digitalWrite(Motor_Pin_One, HIGH);
+		digitalWrite(Motor_Pin_Two, LOW);
+		osc_status = MOT_DOWN;
+	}
+	else if (osc_status == MOT_DOWN)
+	{
+		digitalWrite(Motor_Pin_One, LOW);
+		digitalWrite(Motor_Pin_Two, HIGH);
+		osc_status = MOT_UP;
+	}
+
+
 }
 
 void bae_write()

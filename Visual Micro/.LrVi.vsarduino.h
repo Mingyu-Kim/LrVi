@@ -12,7 +12,7 @@
 #define _VSARDUINO_H_
 #define __AVR_ATmega328p__
 #define __AVR_ATmega328P__
-#define ARDUINO 105
+#define ARDUINO 106
 #define ARDUINO_MAIN
 #define __AVR__
 #define __avr__
@@ -41,6 +41,7 @@ extern "C" void __cxa_pure_virtual() {;}
 
 //
 //
+void motor_osc();
 void bae_write();
 void serial_mpu();
 void serial_deg();
@@ -54,10 +55,21 @@ void serial_radio();
 void radio_init();
 void read_ppm();
 
-#include "C:\Program Files\Arduino\hardware\arduino\cores\arduino\arduino.h"
-#include "C:\Program Files\Arduino\hardware\arduino\variants\standard\pins_arduino.h" 
-#include "C:\Users\user\Documents\Arduino\LrVi\LrVi.ino"
-#include "C:\Users\user\Documents\Arduino\LrVi\Kalman.h"
-#include "C:\Users\user\Documents\Arduino\LrVi\Servo.cpp"
-#include "C:\Users\user\Documents\Arduino\LrVi\Servo.h"
+#include "C:\Program Files (x86)\Arduino\hardware\arduino\cores\arduino\arduino.h"
+#include "C:\Program Files (x86)\Arduino\hardware\arduino\variants\standard\pins_arduino.h" 
+#include "C:\Users\Mingyu\Documents\Arduino\LrVi\LrVi.ino"
+#include "C:\Users\Mingyu\Documents\Arduino\LrVi\Event.cpp"
+#include "C:\Users\Mingyu\Documents\Arduino\LrVi\Event.h"
+#include "C:\Users\Mingyu\Documents\Arduino\LrVi\I2Cdev.cpp"
+#include "C:\Users\Mingyu\Documents\Arduino\LrVi\I2Cdev.h"
+#include "C:\Users\Mingyu\Documents\Arduino\LrVi\Kalman.h"
+#include "C:\Users\Mingyu\Documents\Arduino\LrVi\MPU6050.cpp"
+#include "C:\Users\Mingyu\Documents\Arduino\LrVi\MPU6050.h"
+#include "C:\Users\Mingyu\Documents\Arduino\LrVi\MPU6050_6Axis_MotionApps20.h"
+#include "C:\Users\Mingyu\Documents\Arduino\LrVi\MPU6050_9Axis_MotionApps41.h"
+#include "C:\Users\Mingyu\Documents\Arduino\LrVi\Servo.cpp"
+#include "C:\Users\Mingyu\Documents\Arduino\LrVi\Servo.h"
+#include "C:\Users\Mingyu\Documents\Arduino\LrVi\Timer.cpp"
+#include "C:\Users\Mingyu\Documents\Arduino\LrVi\Timer.h"
+#include "C:\Users\Mingyu\Documents\Arduino\LrVi\helper_3dmath.h"
 #endif
